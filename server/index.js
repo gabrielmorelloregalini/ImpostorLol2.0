@@ -131,7 +131,7 @@ io.on('connection', (socket) => {
     }
 
     broadcastRoomUpdate(code)
-    console.log(`Sala creada: ${code} por ${playerName}`)
+    console.log(`[CREAR] Sala ${code} creada por "${playerName}" (socket: ${socket.id}, id: ${playerId})`)
   })
 
   socket.on('join_room', ({ code, playerName }, callback) => {
@@ -139,16 +139,19 @@ io.on('connection', (socket) => {
     const room = rooms[roomCode]
 
     if (!room) {
+      console.log(`[ERROR] join_room - Sala no existe: ${code}`)
       if (callback) callback({ error: 'La sala no existe' })
       return
     }
 
     if (room.phase !== 'lobby') {
+      console.log(`[ERROR] join_room - ${roomCode} ya empezo (fase: ${room.phase})`)
       if (callback) callback({ error: 'La partida ya empezo' })
       return
     }
 
     if (room.players.length >= 20) {
+      console.log(`[ERROR] join_room - ${roomCode} llena (${room.players.length}/20)`)
       if (callback) callback({ error: 'Sala llena (max 20)' })
       return
     }
@@ -157,28 +160,32 @@ io.on('connection', (socket) => {
     room.players.push({ id: playerId, name: playerName, socketId: socket.id })
 
     socket.join(roomCode)
+    console.log(`[UNIR] "${playerName}" se unio a ${roomCode} (total: ${room.players.length} jugadores)`)
 
     if (callback) {
       callback({ code: roomCode, playerId, isHost: false })
     }
 
     broadcastRoomUpdate(roomCode)
-    console.log(`${playerName} se unio a ${roomCode}`)
+    console.log(`[UNIR] Jugadores en ${roomCode}: [${room.players.map(p => p.name).join(', ')}]`)
   })
 
   socket.on('start_game', ({ code, wordPack, numImpostors }, callback) => {
     const room = rooms[code]
     if (!room) {
+      console.log(`[ERROR] start_game - Sala no encontrada: ${code}`)
       if (callback) callback({ error: 'Sala no encontrada' })
       return
     }
 
     if (room.host !== socket.id) {
+      console.log(`[ERROR] ${socket.id} intento iniciar juego en ${code} sin ser host`)
       if (callback) callback({ error: 'Solo el host puede empezar' })
       return
     }
 
     if (room.players.length < 3) {
+      console.log(`[ERROR] ${code} - Solo ${room.players.length} jugadores, minimo 3`)
       if (callback) callback({ error: 'Minimo 3 jugadores' })
       return
     }
@@ -188,10 +195,14 @@ io.on('connection', (socket) => {
     // Pick secret word
     const pack = wordPacks[room.config.wordPack] || wordPacks['LOL - Todos los Campeones']
     room.secretWord = pack[Math.floor(Math.random() * pack.length)]
+    console.log(`[PARTIDA] ${code} - Palabra secreta: "${room.secretWord}"`)
 
     // Assign impostors (random, no siempre el host)
     const shuffled = shuffle(room.players)
     const impostorIds = new Set(shuffled.slice(0, room.config.numImpostors).map(p => p.id))
+    console.log(`[PARTIDA] ${code} - Orden shuffled: [${shuffled.map(p => p.name).join(', ')}]`)
+    const impostores = room.players.filter(p => impostorIds.has(p.id)).map(p => p.name)
+    console.log(`[PARTIDA] ${code} - IMPOSTORES: ${impostores.join(', ') || 'NINGUNO (ERROR)'}`)
     room.roles = {}
     room.players.forEach(p => {
       room.roles[p.id] = impostorIds.has(p.id)
@@ -199,10 +210,12 @@ io.on('connection', (socket) => {
 
     room.phase = 'roleReveal'
     room.revealsComplete = new Set()
+    console.log(`[PARTIDA] ${code} - Fase cambiada a roleReveal con ${room.config.numImpostors} impostor(es)`)
 
     // Send each player their role privately
     room.players.forEach(p => {
       const isImpostor = room.roles[p.id]
+      console.log(`[ENVIAR] A ${p.name}(${p.socketId}): isImpostor=${isImpostor}`)
       io.to(p.socketId).emit('role_assigned', {
         isImpostor,
         secretWord: isImpostor ? null : room.secretWord,
@@ -212,16 +225,22 @@ io.on('connection', (socket) => {
 
     broadcastRoomUpdate(code)
     if (callback) callback({ success: true })
-    console.log(`Partida iniciada en ${code}. Palabra: ${room.secretWord}`)
+    console.log(`[PARTIDA] Partida iniciada en ${code}.`)
   })
 
   socket.on('reveal_complete', ({ code, playerId }) => {
     const room = rooms[code]
-    if (!room) return
+    if (!room) {
+      console.log(`[ERROR] reveal_complete - Sala no encontrada: ${code}`)
+      return
+    }
 
+    const player = room.players.find(p => p.id === playerId)
     room.revealsComplete.add(playerId)
+    console.log(`[REVEAL] "${player ? player.name : '???'}" confirmo en ${code} (${room.revealsComplete.size}/${room.players.length})`)
 
     if (room.revealsComplete.size >= room.players.length) {
+      console.log(`[REVEAL] Todos confirmaron en ${code}, volviendo a lobby`)
       room.secretWord = ''
       room.roles = {}
       room.revealsComplete = new Set()
@@ -232,23 +251,24 @@ io.on('connection', (socket) => {
     }
   })
 
-  socket.on('disconnect', () => {
+  socket.on('disconnect', (reason) => {
+    console.log(`[DESCONEXION] socket ${socket.id} - razon: ${reason}`)
     for (const code of Object.keys(rooms)) {
       const room = rooms[code]
       const playerIndex = room.players.findIndex(p => p.socketId === socket.id)
       if (playerIndex === -1) continue
 
       const [left] = room.players.splice(playerIndex, 1)
+      console.log(`[DESCONEXION] "${left.name}" salio de ${code}`)
 
       if (room.host === socket.id) {
-        // Host left: close room
+        console.log(`[DESCONEXION] Sala ${code} cerrada (era el host)`)
         io.to(code).emit('room_closed', { reason: 'El host se desconecto' })
         delete rooms[code]
-        console.log(`Sala ${code} cerrada (host desconectado)`)
       } else {
         broadcastRoomUpdate(code)
         io.to(code).emit('player_left', { playerId: left.id })
-        console.log(`${left.name} salio de ${code}`)
+        console.log(`[DESCONEXION] ${code} ahora tiene ${room.players.length} jugadores: [${room.players.map(p => p.name).join(', ')}]`)
       }
       break
     }

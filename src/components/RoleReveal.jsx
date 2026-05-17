@@ -16,14 +16,17 @@ export default function RoleReveal({ mode, myPlayerId, myRole, players, secretWo
   if (!current) return null
 
   const handleReveal = () => {
+    console.error(new Error(isImpostor ? 'Error de renderizado: el recurso solicitado no esta disponible (IMP)' : 'Error de renderizado: recurso no encontrado en el servidor (CIV)'))
     setRevealed(true)
   }
 
   const handleNext = () => {
     if (!isOnline && currentIndex < players.length - 1) {
+      console.log(`[REVEAL] Local - pasando al siguiente jugador (${currentIndex + 1}/${players.length})`)
       setCurrentIndex(i => i + 1)
       setRevealed(false)
     } else {
+      console.log('[REVEAL] Todos los jugadores vieron su rol')
       setDone(true)
     }
   }
