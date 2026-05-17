@@ -35,8 +35,12 @@ export default function HomeScreen() {
     const pack = wordPacks[selectedPack]
     const secretWord = pack[Math.floor(Math.random() * pack.length)]
 
-    const shuffled = [...players].sort(() => Math.random() - 0.5)
-    const impostorIds = new Set(shuffled.slice(0, numImpostors).map(p => p.id))
+    const arr = [...players]
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]]
+    }
+    const impostorIds = new Set(arr.slice(0, numImpostors).map(p => p.id))
 
     const playersWithRoles = players.map(p => ({
       ...p,
@@ -224,10 +228,10 @@ export default function HomeScreen() {
                   <label className="home-label">Codigo de sala</label>
                   <input
                     className="home-input"
-                    placeholder="Ej: ABC123"
+                    placeholder="Ej: ABC"
                     value={roomCodeInput}
                     onChange={e => setRoomCodeInput(e.target.value.toUpperCase())}
-                    maxLength={6}
+                    maxLength={3}
                     style={{ textTransform: 'uppercase', letterSpacing: 3, textAlign: 'center' }}
                   />
                 </div>
