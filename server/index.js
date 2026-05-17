@@ -68,6 +68,15 @@ const wordPacks = {
 // In-memory room store
 const rooms = {}
 
+function shuffle(arr) {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
 function generateCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
   let code = ''
@@ -180,8 +189,8 @@ io.on('connection', (socket) => {
     const pack = wordPacks[room.config.wordPack] || wordPacks['LOL - Todos los Campeones']
     room.secretWord = pack[Math.floor(Math.random() * pack.length)]
 
-    // Assign impostors
-    const shuffled = [...room.players].sort(() => Math.random() - 0.5)
+    // Assign impostors (random, no siempre el host)
+    const shuffled = shuffle(room.players)
     const impostorIds = new Set(shuffled.slice(0, room.config.numImpostors).map(p => p.id))
     room.roles = {}
     room.players.forEach(p => {
@@ -213,23 +222,14 @@ io.on('connection', (socket) => {
     room.revealsComplete.add(playerId)
 
     if (room.revealsComplete.size >= room.players.length) {
-      room.phase = 'result'
+      room.secretWord = ''
+      room.roles = {}
+      room.revealsComplete = new Set()
+      room.winner = null
+      room.phase = 'lobby'
       broadcastRoomUpdate(code)
-      io.to(code).emit('phase_change', { phase: 'result' })
+      io.to(code).emit('phase_change', { phase: 'lobby' })
     }
-  })
-
-  socket.on('declare_winner', ({ code, winner }) => {
-    const room = rooms[code]
-    if (!room) return
-    if (room.host !== socket.id) return
-
-    room.winner = winner
-    io.to(code).emit('game_result', {
-      winner,
-      secretWord: room.secretWord,
-      players: room.players.map(p => ({ id: p.id, name: p.name })),
-    })
   })
 
   socket.on('disconnect', () => {

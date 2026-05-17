@@ -153,7 +153,7 @@ export default function HomeScreen() {
               disabled={!canStart}
               onClick={handleLocalStart}
             >
-              {canStart ? '¡Empezar partida!' : `Faltan ${3 - players.length} jugadores`}
+              {canStart ? 'Empezar partida' : `Faltan ${3 - players.length} jugadores`}
             </button>
           </>
         ) : (

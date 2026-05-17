@@ -122,12 +122,9 @@
   height: 72px;
   border-radius: 50%;
   background: var(--accent-green);
-  color: #1a1a1a;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2rem;
-  font-weight: bold;
 }
 
 .reveal-done-text {

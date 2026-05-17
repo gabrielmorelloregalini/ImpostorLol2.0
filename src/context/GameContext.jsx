@@ -9,10 +9,10 @@ export function GameProvider({ children }) {
   const [phase, setPhase] = useState('home')
   const [players, setPlayers] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const [myRole, setMyRole] = useState(null)
   const [isHost, setIsHost] = useState(false)
   const [roomCode, setRoomCode] = useState(null)
   const [secretWord, setSecretWord] = useState('')
-  const [winner, setWinner] = useState(null)
   const [socket, setSocket] = useState(null)
   const [error, setError] = useState(null)
 
@@ -21,10 +21,10 @@ export function GameProvider({ children }) {
     setPhase('home')
     setPlayers([])
     setMyPlayerId(null)
+    setMyRole(null)
     setIsHost(false)
     setRoomCode(null)
     setSecretWord('')
-    setWinner(null)
     setError(null)
     if (socket) {
       disconnect()
@@ -37,7 +37,8 @@ export function GameProvider({ children }) {
     setPhase('roleReveal')
     setPlayers(config.players)
     setSecretWord(config.secretWord)
-    setWinner(null)
+    setMyRole(null)
+    setError(null)
   }, [])
 
   const createOnlineRoom = useCallback(async ({ playerName, wordPack, numImpostors }) => {
@@ -57,6 +58,7 @@ export function GameProvider({ children }) {
         setPhase('lobby')
         setRoomCode(response.code)
         setMyPlayerId(response.playerId)
+        setMyRole(null)
         setIsHost(response.isHost)
         setPlayers([{ id: response.playerId, name: playerName }])
 
@@ -71,21 +73,17 @@ export function GameProvider({ children }) {
 
         s.on('role_assigned', (data) => {
           setPlayers(data.players)
+          setMyRole(data.isImpostor)
           setSecretWord(data.secretWord || '')
           setPhase('roleReveal')
         })
 
         s.on('phase_change', (data) => {
-          if (data.phase === 'result') {
-            setPhase('result')
+          if (data.phase === 'lobby') {
+            setMyRole(null)
+            setSecretWord('')
+            setPhase('lobby')
           }
-        })
-
-        s.on('game_result', (data) => {
-          setWinner(data.winner)
-          setSecretWord(data.secretWord)
-          setPlayers(data.players)
-          setPhase('result')
         })
 
         resolve(response)
@@ -110,6 +108,7 @@ export function GameProvider({ children }) {
         setPhase('lobby')
         setRoomCode(response.code)
         setMyPlayerId(response.playerId)
+        setMyRole(null)
         setIsHost(response.isHost)
 
         s.on('room_update', (data) => {
@@ -123,21 +122,17 @@ export function GameProvider({ children }) {
 
         s.on('role_assigned', (data) => {
           setPlayers(data.players)
+          setMyRole(data.isImpostor)
           setSecretWord(data.secretWord || '')
           setPhase('roleReveal')
         })
 
         s.on('phase_change', (data) => {
-          if (data.phase === 'result') {
-            setPhase('result')
+          if (data.phase === 'lobby') {
+            setMyRole(null)
+            setSecretWord('')
+            setPhase('lobby')
           }
-        })
-
-        s.on('game_result', (data) => {
-          setWinner(data.winner)
-          setSecretWord(data.secretWord)
-          setPlayers(data.players)
-          setPhase('result')
         })
 
         resolve(response)
@@ -156,32 +151,21 @@ export function GameProvider({ children }) {
 
   const revealComplete = useCallback(() => {
     if (mode === 'local') {
-      setPhase('result')
+      setMyRole(null)
+      setSecretWord('')
+      setPhase('home')
       return
     }
     if (socket && roomCode && myPlayerId) {
       socket.emit('reveal_complete', { code: roomCode, playerId: myPlayerId })
-      // wait for server to broadcast phase_change to 'result'
     }
   }, [mode, socket, roomCode, myPlayerId])
 
-  const declareWinner = useCallback((winnerResult) => {
-    if (mode === 'local') {
-      setWinner(winnerResult)
-      setPhase('result')
-      return
-    }
-    if (socket && roomCode) {
-      socket.emit('declare_winner', { code: roomCode, winner: winnerResult })
-    }
-  }, [mode, socket, roomCode])
-
   const value = {
-    mode, phase, players, myPlayerId, isHost,
-    roomCode, secretWord, winner, error,
+    mode, phase, players, myPlayerId, myRole, isHost,
+    roomCode, secretWord, error,
     startLocalGame, createOnlineRoom, joinOnlineRoom,
-    startOnlineGame, revealComplete, declareWinner,
-    setPhase, setWinner, reset,
+    startOnlineGame, revealComplete, reset,
   }
 
   return (

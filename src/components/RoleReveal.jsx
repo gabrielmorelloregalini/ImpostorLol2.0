@@ -1,16 +1,17 @@
 import { useState } from 'react'
 import './RoleReveal.css'
 
-export default function RoleReveal({ mode, myPlayerId, players, secretWord, onComplete }) {
+export default function RoleReveal({ mode, myPlayerId, myRole, players, secretWord, onComplete }) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [revealed, setRevealed] = useState(false)
   const [done, setDone] = useState(false)
 
-  // In online mode, find the current player
   const isOnline = mode === 'online'
   const current = isOnline
     ? players.find(p => p.id === myPlayerId)
     : players[currentIndex]
+
+  const isImpostor = isOnline ? myRole : current?.isImpostor
 
   if (!current) return null
 
@@ -30,12 +31,12 @@ export default function RoleReveal({ mode, myPlayerId, players, secretWord, onCo
   if (done) {
     return (
       <div className="reveal-done">
-        <div className="reveal-done-icon">✓</div>
+        <div className="reveal-done-icon" />
         <p className="reveal-done-text">
-          {isOnline ? 'Ya viste tu rol' : '¡Todos vieron su rol!'}
+          {isOnline ? 'Ya viste tu rol' : 'Todos vieron su rol'}
         </p>
         <button className="reveal-done-btn" onClick={onComplete}>
-          {isOnline ? 'Listo' : 'Ir al resultado'}
+          Listo
         </button>
       </div>
     )
@@ -55,7 +56,7 @@ export default function RoleReveal({ mode, myPlayerId, players, secretWord, onCo
           <p className="reveal-name">{current.name}</p>
           <p className="reveal-instruction">
             {revealed
-              ? (current.isImpostor ? 'Eres el IMPOSTOR' : 'Tu palabra es:')
+              ? (isImpostor ? 'Eres el IMPOSTOR' : 'Tu palabra es:')
               : 'Presiona para ver tu rol'}
           </p>
         </div>
@@ -65,14 +66,14 @@ export default function RoleReveal({ mode, myPlayerId, players, secretWord, onCo
             Tocar para ver
           </button>
         ) : (
-          <div className={`reveal-secret ${current.isImpostor ? 'impostor' : 'civilian'}`}>
-            {current.isImpostor ? '¡IMPOSTOR!' : `"${secretWord}"`}
+          <div className={`reveal-secret ${isImpostor ? 'impostor' : 'civilian'}`}>
+            {isImpostor ? 'IMPOSTOR' : `"${secretWord}"`}
           </div>
         )}
 
         {revealed && (
           <div className="reveal-warning">
-            {isOnline ? 'No compartas esto con nadie' : '¡No muestres esto a los demas!'}
+            {isOnline ? 'No compartas esto con nadie' : 'No muestres esto a los demas'}
           </div>
         )}
       </div>

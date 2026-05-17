@@ -10,12 +10,11 @@ export default function AppContent() {
     <div className="app">
       <div className="app-header">
         <h1 className="app-title">El Impostor de LOL</h1>
-        <p className="app-subtitle">Juego de deduccion social</p>
       </div>
       <main className="app-main">
         {phase === 'home' && <HomeScreen />}
         {phase === 'lobby' && <OnlineLobby />}
-        {(phase === 'roleReveal' || phase === 'result') && <GameScreen />}
+        {phase === 'roleReveal' && <GameScreen />}
       </main>
     </div>
   )
