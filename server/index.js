@@ -1,12 +1,25 @@
 import express from 'express'
 import { createServer } from 'http'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import { Server } from 'socket.io'
 import cors from 'cors'
 import { v4 as uuidv4 } from 'uuid'
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
 const PORT = process.env.PORT || 3001
 const app = express()
 app.use(cors())
+
+// Serve frontend en produccion
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../dist')))
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(__dirname, '../dist/index.html'))
+  })
+}
+
 const httpServer = createServer(app)
 const io = new Server(httpServer, {
   cors: { origin: '*', methods: ['GET', 'POST'] },

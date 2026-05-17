@@ -44,9 +44,18 @@ git push -u origin main
 | `VITE_SERVER_URL` | `https://impostor-de-lol.onrender.com` |
 
 6. Click **"Create Web Service"**.
-7. Esperar 3-5 minutos a que termine el build y deploy.
+7. Esperar 3-5 minutos a que termine el build y primer deploy.
+8. En el dashboard del servicio, activar **"Auto-Deploy"** (esta activado por defecto si conectaste GitHub).
 
-### 3. Verificar
+### 3. Actualizar el deploy (despues de un push)
+
+Render hace deploy automatico cuando pusheas a la branch. Si no:
+
+1. Ir al dashboard de Render > el servicio.
+2. Click **"Manual Deploy"** > **"Deploy latest commit"**.
+3. Esperar 2-3 minutos.
+
+### 4. Verificar
 
 Una vez deployado, abrir la URL que Render asigna (ej: `https://impostor-de-lol.onrender.com`).
 
